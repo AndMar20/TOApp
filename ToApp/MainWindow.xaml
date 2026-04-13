@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:model="clr-namespace:TOData.Models;assembly=TOData"
         mc:Ignorable="d"
         Title="Товары для дома — учет" Height="760" Width="1200" MinHeight="640" MinWidth="1050">
     <DockPanel Margin="16">
@@ -73,18 +72,18 @@
 
                     <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="Карточка товара" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,10"/>
-                            <TextBlock Text="Артикул"/>
+                            <TextBlock Text="Карточка товара" Style="{StaticResource SectionTitleStyle}"/>
+                            <TextBlock Text="Артикул" Style="{StaticResource FieldLabelStyle}"/>
                             <TextBox Text="{Binding SelectedProduct.Sku, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Наименование" Margin="0,8,0,0"/>
+                            <TextBlock Text="Наименование" Style="{StaticResource FieldLabelStyle}"/>
                             <TextBox Text="{Binding SelectedProduct.ProductName, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Категория" Margin="0,8,0,0"/>
+                            <TextBlock Text="Категория" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding SelectedProduct.CategoryId}" SelectedValuePath="CategoryId" DisplayMemberPath="CategoryName"/>
-                            <TextBlock Text="Ед. измерения" Margin="0,8,0,0"/>
+                            <TextBlock Text="Ед. измерения" Style="{StaticResource FieldLabelStyle}"/>
                             <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding SelectedProduct.UnitId}" SelectedValuePath="UnitId" DisplayMemberPath="UnitName"/>
-                            <TextBlock Text="Мин. остаток" Margin="0,8,0,0"/>
+                            <TextBlock Text="Мин. остаток" Style="{StaticResource FieldLabelStyle}"/>
                             <TextBox Text="{Binding SelectedProduct.MinStockLevel, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Описание" Margin="0,8,0,0"/>
+                            <TextBlock Text="Описание" Style="{StaticResource FieldLabelStyle}"/>
                             <TextBox Text="{Binding SelectedProduct.Description, UpdateSourceTrigger=PropertyChanged}" Height="70" AcceptsReturn="True"/>
                             <CheckBox IsChecked="{Binding SelectedProduct.IsActive}" Content="Активен" Margin="0,8,0,0"/>
 
@@ -134,11 +133,11 @@
                 <StackPanel>
                     <TextBlock Text="Поставщик"/>
                     <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
-                    <TextBlock Text="Товар" Margin="0,8,0,0"/>
+                    <TextBlock Text="Товар" Style="{StaticResource FieldLabelStyle}"/>
                     <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedReceiptProduct}" DisplayMemberPath="ProductName"/>
-                    <TextBlock Text="Количество" Margin="0,8,0,0"/>
+                    <TextBlock Text="Количество" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Text="{Binding ReceiptQuantity, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock Text="Цена закупки" Margin="0,8,0,0"/>
+                    <TextBlock Text="Цена закупки" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Text="{Binding ReceiptPrice, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="Провести поступление" Command="{Binding CreateReceiptCommand}" Margin="0,14,0,0"/>
                 </StackPanel>
@@ -150,9 +149,9 @@
                 <StackPanel>
                     <TextBlock Text="Товар"/>
                     <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedSaleProduct}" DisplayMemberPath="ProductName"/>
-                    <TextBlock Text="Количество" Margin="0,8,0,0"/>
+                    <TextBlock Text="Количество" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Text="{Binding SaleQuantity, UpdateSourceTrigger=PropertyChanged}"/>
-                    <TextBlock Text="Цена продажи" Margin="0,8,0,0"/>
+                    <TextBlock Text="Цена продажи" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Text="{Binding SalePrice, UpdateSourceTrigger=PropertyChanged}"/>
                     <Button Content="Провести продажу" Command="{Binding CreateSaleCommand}" Margin="0,14,0,0"/>
                 </StackPanel>
