@@ -27,7 +27,6 @@
 
                     <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="📦" FontSize="18"/>
                             <TextBlock Text="Товаров" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
                             <TextBlock Text="{Binding ProductCount}" FontSize="34" FontWeight="Bold"/>
                         </StackPanel>
@@ -35,7 +34,6 @@
 
                     <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="🤝" FontSize="18"/>
                             <TextBlock Text="Поставщиков" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
                             <TextBlock Text="{Binding SupplierCount}" FontSize="34" FontWeight="Bold"/>
                         </StackPanel>
@@ -43,7 +41,6 @@
 
                     <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="⚠️" FontSize="18"/>
                             <TextBlock Text="Низкий остаток" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
                             <TextBlock Text="{Binding LowStockCount}" FontSize="34" FontWeight="Bold"/>
                         </StackPanel>
@@ -134,9 +131,7 @@
             <TabItem Header="Поступление">
                 <Border Style="{StaticResource CardBorderStyle}" Margin="16" MaxWidth="500">
                 <StackPanel>
-                    <TextBlock Text="Поступление товара" Style="{StaticResource SectionTitleStyle}"/>
-                    <TextBlock Text="Заполните данные поставки и проведите документ." Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
-                    <TextBlock Text="Поставщик" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBlock Text="Поставщик"/>
                     <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
                     <TextBlock Text="Товар" Style="{StaticResource FieldLabelStyle}"/>
                     <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedReceiptProduct}" DisplayMemberPath="ProductName"/>
@@ -152,9 +147,7 @@
             <TabItem Header="Продажа">
                 <Border Style="{StaticResource CardBorderStyle}" Margin="16" MaxWidth="500">
                 <StackPanel>
-                    <TextBlock Text="Продажа товара" Style="{StaticResource SectionTitleStyle}"/>
-                    <TextBlock Text="Оформите продажу выбранного товара." Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
-                    <TextBlock Text="Товар" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBlock Text="Товар"/>
                     <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedSaleProduct}" DisplayMemberPath="ProductName"/>
                     <TextBlock Text="Количество" Style="{StaticResource FieldLabelStyle}"/>
                     <TextBox Text="{Binding SaleQuantity, UpdateSourceTrigger=PropertyChanged}"/>
