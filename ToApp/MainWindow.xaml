@@ -3,25 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:model="clr-namespace:TOData.Models;assembly=TOData"
         mc:Ignorable="d"
-        Title="Товары для дома — учет"
-        Height="760" Width="1240" MinHeight="640" MinWidth="1100">
+        Title="Товары для дома — учет" Height="760" Width="1200" MinHeight="640" MinWidth="1050">
     <DockPanel Margin="12">
-        <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem>
-                <TextBlock Text="{Binding StatusText}" />
-            </StatusBarItem>
-            <Separator/>
-            <StatusBarItem>
-                <TextBlock Text="{Binding IsBusy, StringFormat=Занят: {0}}" />
-            </StatusBarItem>
-        </StatusBar>
-
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
             <Button Content="Обновить" Command="{Binding LoadCommand}" Padding="14,6" Margin="0,0,8,0"/>
-            <TextBlock Text="Учет товаров хозяйственного магазина" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="17" Margin="0,0,20,0"/>
-            <TextBlock Text="Поиск товара:" VerticalAlignment="Center"/>
-            <TextBox Width="220" Margin="6,0,0,0" Text="{Binding ProductSearch, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="Учет товаров хозяйственного магазина" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="17"/>
         </StackPanel>
 
         <TabControl>
@@ -82,18 +70,18 @@
                         <StackPanel>
                             <TextBlock Text="Карточка товара" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,10"/>
                             <TextBlock Text="Артикул"/>
-                            <TextBox Text="{Binding ProductForm.Sku, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+                            <TextBox Text="{Binding SelectedProduct.Sku, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBlock Text="Наименование" Margin="0,8,0,0"/>
-                            <TextBox Text="{Binding ProductForm.ProductName, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+                            <TextBox Text="{Binding SelectedProduct.ProductName, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBlock Text="Категория" Margin="0,8,0,0"/>
-                            <ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding ProductForm.CategoryId, ValidatesOnDataErrors=True}" SelectedValuePath="CategoryId" DisplayMemberPath="CategoryName"/>
+                            <ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding SelectedProduct.CategoryId}" SelectedValuePath="CategoryId" DisplayMemberPath="CategoryName"/>
                             <TextBlock Text="Ед. измерения" Margin="0,8,0,0"/>
-                            <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding ProductForm.UnitId, ValidatesOnDataErrors=True}" SelectedValuePath="UnitId" DisplayMemberPath="UnitName"/>
+                            <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding SelectedProduct.UnitId}" SelectedValuePath="UnitId" DisplayMemberPath="UnitName"/>
                             <TextBlock Text="Мин. остаток" Margin="0,8,0,0"/>
-                            <TextBox Text="{Binding ProductForm.MinStockLevel, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+                            <TextBox Text="{Binding SelectedProduct.MinStockLevel, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBlock Text="Описание" Margin="0,8,0,0"/>
-                            <TextBox Text="{Binding ProductForm.Description, UpdateSourceTrigger=PropertyChanged}" Height="70" AcceptsReturn="True"/>
-                            <CheckBox IsChecked="{Binding ProductForm.IsActive}" Content="Активен" Margin="0,8,0,0"/>
+                            <TextBox Text="{Binding SelectedProduct.Description, UpdateSourceTrigger=PropertyChanged}" Height="70" AcceptsReturn="True"/>
+                            <CheckBox IsChecked="{Binding SelectedProduct.IsActive}" Content="Активен" Margin="0,8,0,0"/>
 
                             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                                 <Button Content="Новый" Command="{Binding NewProductCommand}" Padding="10,5" Margin="0,0,8,0"/>
@@ -137,73 +125,29 @@
             </TabItem>
 
             <TabItem Header="Поступление">
-                <Grid Margin="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="360"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Поставщик"/>
-                        <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
-                        <TextBlock Text="Товар" Margin="0,8,0,0"/>
-                        <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding LineReceiptProduct}" DisplayMemberPath="ProductName"/>
-                        <TextBlock Text="Количество" Margin="0,8,0,0"/>
-                        <TextBox Text="{Binding LineReceiptQuantity, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="Цена закупки" Margin="0,8,0,0"/>
-                        <TextBox Text="{Binding LineReceiptPrice, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="Добавить строку" Command="{Binding AddReceiptLineCommand}" Margin="0,10,0,0" Padding="10,6"/>
-                        <Button Content="Провести поступление" Command="{Binding CreateReceiptCommand}" Margin="0,8,0,0" Padding="12,7"/>
-                        <TextBlock Text="{Binding ReceiptTotal, StringFormat=Итого: {0:C}}" FontWeight="Bold" Margin="0,12,0,0"/>
-                    </StackPanel>
-
-                    <DockPanel Grid.Column="2">
-                        <Button DockPanel.Dock="Bottom" Content="Удалить выбранную строку" Command="{Binding RemoveReceiptLineCommand}" Margin="0,8,0,0" Padding="10,6"/>
-                        <DataGrid ItemsSource="{Binding ReceiptLines}" SelectedItem="{Binding SelectedReceiptLine}" AutoGenerateColumns="False">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Товар" Binding="{Binding ProductName}" Width="*"/>
-                                <DataGridTextColumn Header="Кол-во" Binding="{Binding Quantity}" Width="100"/>
-                                <DataGridTextColumn Header="Цена" Binding="{Binding Price}" Width="120"/>
-                                <DataGridTextColumn Header="Сумма" Binding="{Binding Amount}" Width="120"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </DockPanel>
-                </Grid>
+                <StackPanel Margin="16" MaxWidth="450">
+                    <TextBlock Text="Поставщик"/>
+                    <ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
+                    <TextBlock Text="Товар" Margin="0,8,0,0"/>
+                    <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedReceiptProduct}" DisplayMemberPath="ProductName"/>
+                    <TextBlock Text="Количество" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding ReceiptQuantity, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Цена закупки" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding ReceiptPrice, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="Провести поступление" Command="{Binding CreateReceiptCommand}" Margin="0,14,0,0" Padding="12,7"/>
+                </StackPanel>
             </TabItem>
 
             <TabItem Header="Продажа">
-                <Grid Margin="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="360"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Товар"/>
-                        <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding LineSaleProduct}" DisplayMemberPath="ProductName"/>
-                        <TextBlock Text="Количество" Margin="0,8,0,0"/>
-                        <TextBox Text="{Binding LineSaleQuantity, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Text="Цена продажи" Margin="0,8,0,0"/>
-                        <TextBox Text="{Binding LineSalePrice, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="Добавить строку" Command="{Binding AddSaleLineCommand}" Margin="0,10,0,0" Padding="10,6"/>
-                        <Button Content="Провести продажу" Command="{Binding CreateSaleCommand}" Margin="0,8,0,0" Padding="12,7"/>
-                        <TextBlock Text="{Binding SaleTotal, StringFormat=Итого: {0:C}}" FontWeight="Bold" Margin="0,12,0,0"/>
-                    </StackPanel>
-
-                    <DockPanel Grid.Column="2">
-                        <Button DockPanel.Dock="Bottom" Content="Удалить выбранную строку" Command="{Binding RemoveSaleLineCommand}" Margin="0,8,0,0" Padding="10,6"/>
-                        <DataGrid ItemsSource="{Binding SaleLines}" SelectedItem="{Binding SelectedSaleLine}" AutoGenerateColumns="False">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Товар" Binding="{Binding ProductName}" Width="*"/>
-                                <DataGridTextColumn Header="Кол-во" Binding="{Binding Quantity}" Width="100"/>
-                                <DataGridTextColumn Header="Цена" Binding="{Binding Price}" Width="120"/>
-                                <DataGridTextColumn Header="Сумма" Binding="{Binding Amount}" Width="120"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </DockPanel>
-                </Grid>
+                <StackPanel Margin="16" MaxWidth="450">
+                    <TextBlock Text="Товар"/>
+                    <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedSaleProduct}" DisplayMemberPath="ProductName"/>
+                    <TextBlock Text="Количество" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding SaleQuantity, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="Цена продажи" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding SalePrice, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="Провести продажу" Command="{Binding CreateSaleCommand}" Margin="0,14,0,0" Padding="12,7"/>
+                </StackPanel>
             </TabItem>
 
             <TabItem Header="Остатки">
@@ -212,7 +156,7 @@
                               IsChecked="{Binding ShowOnlyLowStock}"
                               DockPanel.Dock="Top"
                               Margin="0,0,0,8"/>
-                    <DataGrid ItemsSource="{Binding StockBalances}" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid ItemsSource="{Binding StockBalances}" SelectedItem="{Binding SelectedStockBalance}" AutoGenerateColumns="False" IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Артикул" Binding="{Binding Sku}" Width="120"/>
                             <DataGridTextColumn Header="Наименование" Binding="{Binding ProductName}" Width="*"/>

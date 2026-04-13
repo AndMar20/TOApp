@@ -1,15 +1,18 @@
 using System.Windows;
-using MainViewModel = ToApp.ViewModels.MainViewModel;
+using ToApp.Services;
+using ToApp.ViewModels;
 
 namespace ToApp;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        var vm = new MainViewModel();
+        var dialogService = new DialogService();
+        var inventoryService = new InventoryService();
+        var vm = new MainViewModel(inventoryService, dialogService);
 
         var window = new MainWindow
         {
@@ -17,6 +20,6 @@ public partial class App : Application
         };
 
         window.Show();
-        vm.LoadCommand.Execute(null);
+        await vm.LoadAllAsync();
     }
 }
