@@ -1,63 +1,49 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
+using Microsoft.EntityFrameworkCore;
 using TOData.Models;
 using ToApp.Infrastructure;
-using ToApp.Services;
-using ToApp.ViewModels.Forms;
 
 namespace ToApp.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
-    private readonly IInventoryService _inventoryService;
-    private readonly IDialogService _dialogService;
-
     private Product? _selectedProduct;
-    private Supplier? _selectedReceiptSupplier;
-    private Product? _lineReceiptProduct;
-    private int _lineReceiptQuantity = 1;
-    private decimal _lineReceiptPrice;
-    private Product? _lineSaleProduct;
-    private int _lineSaleQuantity = 1;
-    private decimal _lineSalePrice;
-    private DocumentLineFormModel? _selectedReceiptLine;
-    private DocumentLineFormModel? _selectedSaleLine;
+    private Supplier? _selectedSupplier;
+    private Category? _selectedCategory;
+    private Unit? _selectedUnit;
+    private StockBalance? _selectedStockBalance;
     private bool _showOnlyLowStock;
-    private string _productSearch = string.Empty;
-    private bool _isBusy;
-    private string _statusText = "Готово";
+    private Product? _selectedReceiptProduct;
+    private Supplier? _selectedReceiptSupplier;
+    private int _receiptQuantity = 1;
+    private decimal _receiptPrice;
+    private Product? _selectedSaleProduct;
+    private int _saleQuantity = 1;
+    private decimal _salePrice;
 
-    public MainViewModel(IInventoryService inventoryService, IDialogService dialogService)
+    public MainViewModel()
     {
-        _inventoryService = inventoryService;
-        _dialogService = dialogService;
-
         Products = new ObservableCollection<Product>();
         Suppliers = new ObservableCollection<Supplier>();
         Categories = new ObservableCollection<Category>();
         Units = new ObservableCollection<Unit>();
         StockBalances = new ObservableCollection<StockBalance>();
-        ReceiptLines = new ObservableCollection<DocumentLineFormModel>();
-        SaleLines = new ObservableCollection<DocumentLineFormModel>();
 
-        ProductForm = new ProductFormModel();
+        LoadCommand = new RelayCommand(_ => LoadAll());
+        SaveProductCommand = new RelayCommand(_ => SaveProduct(), _ => SelectedProduct is not null);
+        NewProductCommand = new RelayCommand(_ => CreateNewProduct());
+        DeleteProductCommand = new RelayCommand(_ => DeleteProduct(), _ => SelectedProduct is not null && SelectedProduct.ProductId > 0);
 
-        LoadCommand = new AsyncRelayCommand(_ => LoadAllAsync());
-        SaveProductCommand = new AsyncRelayCommand(_ => SaveProductAsync(), _ => !IsBusy && ProductForm.IsValid);
-        NewProductCommand = new RelayCommand(_ => CreateNewProduct(), _ => !IsBusy);
-        DeleteProductCommand = new AsyncRelayCommand(_ => DeleteProductAsync(), _ => !IsBusy && ProductForm.ProductId > 0);
+        AddSupplierCommand = new RelayCommand(_ => AddSupplier());
+        AddCategoryCommand = new RelayCommand(_ => AddCategory());
+        AddUnitCommand = new RelayCommand(_ => AddUnit());
 
-        AddSupplierCommand = new AsyncRelayCommand(_ => AddSupplierAsync(), _ => !IsBusy);
-        AddCategoryCommand = new AsyncRelayCommand(_ => AddCategoryAsync(), _ => !IsBusy);
-        AddUnitCommand = new AsyncRelayCommand(_ => AddUnitAsync(), _ => !IsBusy);
+        CreateReceiptCommand = new RelayCommand(_ => CreateReceipt(), _ => SelectedReceiptProduct is not null && SelectedReceiptSupplier is not null && ReceiptQuantity > 0 && ReceiptPrice > 0);
+        CreateSaleCommand = new RelayCommand(_ => CreateSale(), _ => SelectedSaleProduct is not null && SaleQuantity > 0 && SalePrice > 0);
 
-        AddReceiptLineCommand = new RelayCommand(_ => AddReceiptLine(), _ => !IsBusy && CanAddReceiptLine());
-        RemoveReceiptLineCommand = new RelayCommand(_ => RemoveReceiptLine(), _ => !IsBusy && SelectedReceiptLine is not null);
-        CreateReceiptCommand = new AsyncRelayCommand(_ => CreateReceiptAsync(), _ => !IsBusy && SelectedReceiptSupplier is not null && ReceiptLines.Count > 0 && ReceiptLines.All(x => x.IsValid));
-
-        AddSaleLineCommand = new RelayCommand(_ => AddSaleLine(), _ => !IsBusy && CanAddSaleLine());
-        RemoveSaleLineCommand = new RelayCommand(_ => RemoveSaleLine(), _ => !IsBusy && SelectedSaleLine is not null);
-        CreateSaleCommand = new AsyncRelayCommand(_ => CreateSaleAsync(), _ => !IsBusy && SaleLines.Count > 0 && SaleLines.All(x => x.IsValid));
+        LoadAll();
     }
 
     public ObservableCollection<Product> Products { get; }
@@ -66,24 +52,51 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<Unit> Units { get; }
     public ObservableCollection<StockBalance> StockBalances { get; }
 
-    public ObservableCollection<DocumentLineFormModel> ReceiptLines { get; }
-    public ObservableCollection<DocumentLineFormModel> SaleLines { get; }
-
-    public ProductFormModel ProductForm { get; private set; }
-
     public Product? SelectedProduct
     {
         get => _selectedProduct;
         set
         {
-            if (!SetProperty(ref _selectedProduct, value) || value is null)
+            if (SetProperty(ref _selectedProduct, value))
             {
-                return;
+                RaiseCommandStates();
             }
+        }
+    }
 
-            ProductForm = ProductFormModel.FromProduct(value);
-            OnPropertyChanged(nameof(ProductForm));
-            RaiseCommandStates();
+    public Supplier? SelectedSupplier
+    {
+        get => _selectedSupplier;
+        set => SetProperty(ref _selectedSupplier, value);
+    }
+
+    public Category? SelectedCategory
+    {
+        get => _selectedCategory;
+        set => SetProperty(ref _selectedCategory, value);
+    }
+
+    public Unit? SelectedUnit
+    {
+        get => _selectedUnit;
+        set => SetProperty(ref _selectedUnit, value);
+    }
+
+    public StockBalance? SelectedStockBalance
+    {
+        get => _selectedStockBalance;
+        set => SetProperty(ref _selectedStockBalance, value);
+    }
+
+    public Product? SelectedReceiptProduct
+    {
+        get => _selectedReceiptProduct;
+        set
+        {
+            if (SetProperty(ref _selectedReceiptProduct, value))
+            {
+                RaiseCommandStates();
+            }
         }
     }
 
@@ -99,96 +112,60 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public Product? LineReceiptProduct
+    public int ReceiptQuantity
     {
-        get => _lineReceiptProduct;
+        get => _receiptQuantity;
         set
         {
-            if (SetProperty(ref _lineReceiptProduct, value))
+            if (SetProperty(ref _receiptQuantity, value))
             {
                 RaiseCommandStates();
             }
         }
     }
 
-    public int LineReceiptQuantity
+    public decimal ReceiptPrice
     {
-        get => _lineReceiptQuantity;
+        get => _receiptPrice;
         set
         {
-            if (SetProperty(ref _lineReceiptQuantity, value))
+            if (SetProperty(ref _receiptPrice, value))
             {
                 RaiseCommandStates();
             }
         }
     }
 
-    public decimal LineReceiptPrice
+    public Product? SelectedSaleProduct
     {
-        get => _lineReceiptPrice;
+        get => _selectedSaleProduct;
         set
         {
-            if (SetProperty(ref _lineReceiptPrice, value))
+            if (SetProperty(ref _selectedSaleProduct, value))
             {
                 RaiseCommandStates();
             }
         }
     }
 
-    public Product? LineSaleProduct
+    public int SaleQuantity
     {
-        get => _lineSaleProduct;
+        get => _saleQuantity;
         set
         {
-            if (SetProperty(ref _lineSaleProduct, value))
+            if (SetProperty(ref _saleQuantity, value))
             {
                 RaiseCommandStates();
             }
         }
     }
 
-    public int LineSaleQuantity
+    public decimal SalePrice
     {
-        get => _lineSaleQuantity;
+        get => _salePrice;
         set
         {
-            if (SetProperty(ref _lineSaleQuantity, value))
-            {
-                RaiseCommandStates();
-            }
-        }
-    }
-
-    public decimal LineSalePrice
-    {
-        get => _lineSalePrice;
-        set
-        {
-            if (SetProperty(ref _lineSalePrice, value))
-            {
-                RaiseCommandStates();
-            }
-        }
-    }
-
-    public DocumentLineFormModel? SelectedReceiptLine
-    {
-        get => _selectedReceiptLine;
-        set
-        {
-            if (SetProperty(ref _selectedReceiptLine, value))
-            {
-                RaiseCommandStates();
-            }
-        }
-    }
-
-    public DocumentLineFormModel? SelectedSaleLine
-    {
-        get => _selectedSaleLine;
-        set
-        {
-            if (SetProperty(ref _selectedSaleLine, value))
+            if (SetProperty(ref _salePrice, value))
             {
                 RaiseCommandStates();
             }
@@ -202,46 +179,10 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _showOnlyLowStock, value))
             {
-                _ = LoadAllAsync();
+                LoadStock();
             }
         }
     }
-
-    public string ProductSearch
-    {
-        get => _productSearch;
-        set
-        {
-            if (SetProperty(ref _productSearch, value))
-            {
-                _ = LoadAllAsync();
-            }
-        }
-    }
-
-    public bool IsBusy
-    {
-        get => _isBusy;
-        private set
-        {
-            if (SetProperty(ref _isBusy, value))
-            {
-                RaiseCommandStates();
-            }
-        }
-    }
-
-    public string StatusText
-    {
-        get => _statusText;
-        private set => SetProperty(ref _statusText, value);
-    }
-
-    public int ProductCount => Products.Count;
-    public int SupplierCount => Suppliers.Count;
-    public int LowStockCount => StockBalances.Count(x => (x.CurrentStock ?? 0) <= x.MinStockLevel);
-    public decimal ReceiptTotal => ReceiptLines.Sum(x => x.Amount);
-    public decimal SaleTotal => SaleLines.Sum(x => x.Amount);
 
     public ICommand LoadCommand { get; }
     public ICommand SaveProductCommand { get; }
@@ -250,35 +191,27 @@ public sealed class MainViewModel : ObservableObject
     public ICommand AddSupplierCommand { get; }
     public ICommand AddCategoryCommand { get; }
     public ICommand AddUnitCommand { get; }
-    public ICommand AddReceiptLineCommand { get; }
-    public ICommand RemoveReceiptLineCommand { get; }
     public ICommand CreateReceiptCommand { get; }
-    public ICommand AddSaleLineCommand { get; }
-    public ICommand RemoveSaleLineCommand { get; }
     public ICommand CreateSaleCommand { get; }
 
-    public async Task LoadAllAsync()
-    {
-        if (IsBusy)
-        {
-            return;
-        }
+    public int ProductCount => Products.Count;
+    public int SupplierCount => Suppliers.Count;
+    public int LowStockCount => StockBalances.Count(x => (x.CurrentStock ?? 0) <= x.MinStockLevel);
 
+    private void LoadAll()
+    {
         try
         {
-            IsBusy = true;
-            StatusText = "Загрузка данных...";
-            var snapshot = await _inventoryService.LoadSnapshotAsync(ShowOnlyLowStock, ProductSearch);
+            using var db = new TodbContext();
 
-            Products.ReplaceWith(snapshot.Products);
-            Suppliers.ReplaceWith(snapshot.Suppliers);
-            Categories.ReplaceWith(snapshot.Categories);
-            Units.ReplaceWith(snapshot.Units);
-            StockBalances.ReplaceWith(snapshot.StockBalances);
+            Products.ReplaceWith(db.Products.AsNoTracking().OrderBy(x => x.ProductName).ToList());
+            Suppliers.ReplaceWith(db.Suppliers.AsNoTracking().OrderBy(x => x.SupplierName).ToList());
+            Categories.ReplaceWith(db.Categories.AsNoTracking().OrderBy(x => x.CategoryName).ToList());
+            Units.ReplaceWith(db.Units.AsNoTracking().OrderBy(x => x.UnitName).ToList());
 
             if (SelectedProduct is null && Products.Count > 0)
             {
-                SelectedProduct = Products[0];
+                SelectedProduct = CloneProduct(Products[0]);
             }
 
             if (SelectedReceiptSupplier is null && Suppliers.Count > 0)
@@ -286,48 +219,80 @@ public sealed class MainViewModel : ObservableObject
                 SelectedReceiptSupplier = Suppliers[0];
             }
 
-            LineReceiptProduct ??= Products.FirstOrDefault();
-            LineSaleProduct ??= Products.FirstOrDefault();
+            if (SelectedReceiptProduct is null && Products.Count > 0)
+            {
+                SelectedReceiptProduct = Products[0];
+            }
 
+            if (SelectedSaleProduct is null && Products.Count > 0)
+            {
+                SelectedSaleProduct = Products[0];
+            }
+
+            LoadStock(db);
             OnPropertyChanged(nameof(ProductCount));
             OnPropertyChanged(nameof(SupplierCount));
             OnPropertyChanged(nameof(LowStockCount));
-
-            StatusText = "Данные обновлены";
+            RaiseCommandStates();
         }
         catch (Exception ex)
         {
-            StatusText = "Ошибка загрузки";
-            await _dialogService.ShowErrorAsync($"Ошибка загрузки данных: {ex.Message}");
-        }
-        finally
-        {
-            IsBusy = false;
+            MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private async Task SaveProductAsync()
+    private void LoadStock(TodbContext? dbContext = null)
     {
-        if (!ProductForm.IsValid)
+        var ownContext = dbContext is null;
+        using var db = ownContext ? new TodbContext() : null;
+        var context = dbContext ?? db!;
+
+        var query = context.StockBalances.AsNoTracking().OrderBy(x => x.ProductName).AsQueryable();
+        if (ShowOnlyLowStock)
         {
-            await _dialogService.ShowErrorAsync("Проверьте корректность полей товара.");
+            query = query.Where(x => (x.CurrentStock ?? 0) <= x.MinStockLevel);
+        }
+
+        StockBalances.ReplaceWith(query.ToList());
+        OnPropertyChanged(nameof(LowStockCount));
+    }
+
+    private void SaveProduct()
+    {
+        if (SelectedProduct is null)
+        {
             return;
         }
 
         try
         {
-            IsBusy = true;
-            await _inventoryService.SaveProductAsync(ProductForm.ToProduct());
-            await LoadAllAsync();
-            await _dialogService.ShowInfoAsync("Товар сохранен.");
+            using var db = new TodbContext();
+            Product entity;
+            if (SelectedProduct.ProductId == 0)
+            {
+                entity = new Product();
+                db.Products.Add(entity);
+            }
+            else
+            {
+                entity = db.Products.First(x => x.ProductId == SelectedProduct.ProductId);
+            }
+
+            entity.Sku = SelectedProduct.Sku;
+            entity.ProductName = SelectedProduct.ProductName;
+            entity.CategoryId = SelectedProduct.CategoryId;
+            entity.UnitId = SelectedProduct.UnitId;
+            entity.MinStockLevel = SelectedProduct.MinStockLevel;
+            entity.Description = SelectedProduct.Description;
+            entity.IsActive = SelectedProduct.IsActive;
+
+            db.SaveChanges();
+            LoadAll();
+            MessageBox.Show("Товар сохранен.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync($"Ошибка сохранения товара: {ex.Message}");
-        }
-        finally
-        {
-            IsBusy = false;
+            MessageBox.Show($"Ошибка сохранения товара: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -335,226 +300,220 @@ public sealed class MainViewModel : ObservableObject
     {
         if (Categories.Count == 0 || Units.Count == 0)
         {
+            MessageBox.Show("Сначала добавьте хотя бы одну категорию и единицу измерения.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        ProductForm = new ProductFormModel
+        SelectedProduct = new Product
         {
             IsActive = true,
             CategoryId = Categories[0].CategoryId,
             UnitId = Units[0].UnitId,
-            MinStockLevel = 0
+            MinStockLevel = 0,
+            Sku = string.Empty,
+            ProductName = string.Empty
         };
-        OnPropertyChanged(nameof(ProductForm));
-        RaiseCommandStates();
     }
 
-    private async Task DeleteProductAsync()
+    private void DeleteProduct()
     {
-        if (ProductForm.ProductId <= 0)
-        {
-            return;
-        }
-
-        if (!await _dialogService.ConfirmAsync("Удалить товар?"))
+        if (SelectedProduct is null || SelectedProduct.ProductId == 0)
         {
             return;
         }
 
         try
         {
-            IsBusy = true;
-            await _inventoryService.DeleteProductAsync(ProductForm.ProductId);
-            CreateNewProduct();
-            await LoadAllAsync();
+            using var db = new TodbContext();
+            var entity = db.Products.First(x => x.ProductId == SelectedProduct.ProductId);
+            db.Products.Remove(entity);
+            db.SaveChanges();
+            SelectedProduct = null;
+            LoadAll();
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync($"Не удалось удалить товар: {ex.Message}");
-        }
-        finally
-        {
-            IsBusy = false;
+            MessageBox.Show($"Не удалось удалить товар: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private async Task AddSupplierAsync()
+    private void AddSupplier()
     {
-        var name = await _dialogService.PromptAsync("Введите название поставщика:", "Новый поставщик");
+        var name = Prompt("Новый поставщик", "Введите название поставщика:");
         if (string.IsNullOrWhiteSpace(name))
         {
             return;
         }
 
-        await _inventoryService.AddSupplierAsync(name);
-        await LoadAllAsync();
+        try
+        {
+            using var db = new TodbContext();
+            db.Suppliers.Add(new Supplier { SupplierName = name.Trim() });
+            db.SaveChanges();
+            LoadAll();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Ошибка добавления поставщика: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async Task AddCategoryAsync()
+    private void AddCategory()
     {
-        var name = await _dialogService.PromptAsync("Введите название категории:", "Новая категория");
+        var name = Prompt("Новая категория", "Введите название категории:");
         if (string.IsNullOrWhiteSpace(name))
         {
             return;
         }
 
-        await _inventoryService.AddCategoryAsync(name);
-        await LoadAllAsync();
+        try
+        {
+            using var db = new TodbContext();
+            db.Categories.Add(new Category { CategoryName = name.Trim() });
+            db.SaveChanges();
+            LoadAll();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Ошибка добавления категории: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async Task AddUnitAsync()
+    private void AddUnit()
     {
-        var name = await _dialogService.PromptAsync("Введите название единицы:", "Новая единица");
-        var shortName = await _dialogService.PromptAsync("Введите краткое обозначение:", "Новая единица");
+        var name = Prompt("Новая единица", "Введите название единицы:");
+        var shortName = Prompt("Новая единица", "Введите краткое обозначение:");
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(shortName))
         {
             return;
         }
 
-        await _inventoryService.AddUnitAsync(name, shortName);
-        await LoadAllAsync();
-    }
-
-    private bool CanAddReceiptLine() => LineReceiptProduct is not null && LineReceiptQuantity > 0 && LineReceiptPrice > 0;
-
-    private void AddReceiptLine()
-    {
-        if (LineReceiptProduct is null)
+        try
         {
-            return;
+            using var db = new TodbContext();
+            db.Units.Add(new Unit { UnitName = name.Trim(), UnitShortName = shortName.Trim() });
+            db.SaveChanges();
+            LoadAll();
         }
-
-        ReceiptLines.Add(new DocumentLineFormModel
+        catch (Exception ex)
         {
-            ProductId = LineReceiptProduct.ProductId,
-            ProductName = LineReceiptProduct.ProductName,
-            Quantity = LineReceiptQuantity,
-            Price = LineReceiptPrice
-        });
-        OnPropertyChanged(nameof(ReceiptTotal));
-        RaiseCommandStates();
-    }
-
-    private void RemoveReceiptLine()
-    {
-        if (SelectedReceiptLine is null)
-        {
-            return;
+            MessageBox.Show($"Ошибка добавления единицы измерения: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-
-        ReceiptLines.Remove(SelectedReceiptLine);
-        OnPropertyChanged(nameof(ReceiptTotal));
-        RaiseCommandStates();
     }
 
-    private async Task CreateReceiptAsync()
+    private void CreateReceipt()
     {
-        if (SelectedReceiptSupplier is null || ReceiptLines.Count == 0)
+        if (SelectedReceiptProduct is null || SelectedReceiptSupplier is null)
         {
             return;
         }
 
         try
         {
-            IsBusy = true;
-            var lines = ReceiptLines.Select(x => new DocumentLineRequest { ProductId = x.ProductId, Quantity = x.Quantity, Price = x.Price }).ToList();
-            await _inventoryService.CreateReceiptAsync(SelectedReceiptSupplier.SupplierId, lines);
-            ReceiptLines.Clear();
-            OnPropertyChanged(nameof(ReceiptTotal));
-            await LoadAllAsync();
-            await _dialogService.ShowInfoAsync("Поступление проведено.");
+            using var db = new TodbContext();
+            var receipt = new Receipt
+            {
+                SupplierId = SelectedReceiptSupplier.SupplierId,
+                ReceiptDate = DateTime.Now,
+                TotalAmount = ReceiptQuantity * ReceiptPrice,
+                ReceiptItems =
+                {
+                    new ReceiptItem
+                    {
+                        ProductId = SelectedReceiptProduct.ProductId,
+                        Quantity = ReceiptQuantity,
+                        Price = ReceiptPrice
+                    }
+                }
+            };
+
+            db.Receipts.Add(receipt);
+            db.SaveChanges();
+
+            MessageBox.Show("Поступление сохранено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            LoadAll();
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync($"Ошибка поступления: {ex.Message}");
-        }
-        finally
-        {
-            IsBusy = false;
+            MessageBox.Show($"Ошибка создания поступления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private bool CanAddSaleLine() => LineSaleProduct is not null && LineSaleQuantity > 0 && LineSalePrice > 0;
-
-    private void AddSaleLine()
+    private void CreateSale()
     {
-        if (LineSaleProduct is null)
-        {
-            return;
-        }
-
-        SaleLines.Add(new DocumentLineFormModel
-        {
-            ProductId = LineSaleProduct.ProductId,
-            ProductName = LineSaleProduct.ProductName,
-            Quantity = LineSaleQuantity,
-            Price = LineSalePrice
-        });
-        OnPropertyChanged(nameof(SaleTotal));
-        RaiseCommandStates();
-    }
-
-    private void RemoveSaleLine()
-    {
-        if (SelectedSaleLine is null)
-        {
-            return;
-        }
-
-        SaleLines.Remove(SelectedSaleLine);
-        OnPropertyChanged(nameof(SaleTotal));
-        RaiseCommandStates();
-    }
-
-    private async Task CreateSaleAsync()
-    {
-        if (SaleLines.Count == 0)
+        if (SelectedSaleProduct is null)
         {
             return;
         }
 
         try
         {
-            IsBusy = true;
-            var lines = SaleLines.Select(x => new DocumentLineRequest { ProductId = x.ProductId, Quantity = x.Quantity, Price = x.Price }).ToList();
-            await _inventoryService.CreateSaleAsync(lines);
-            SaleLines.Clear();
-            OnPropertyChanged(nameof(SaleTotal));
-            await LoadAllAsync();
-            await _dialogService.ShowInfoAsync("Продажа проведена.");
+            using var db = new TodbContext();
+            var stock = db.StockBalances.AsNoTracking().FirstOrDefault(x => x.ProductId == SelectedSaleProduct.ProductId)?.CurrentStock ?? 0;
+            if (stock < SaleQuantity)
+            {
+                MessageBox.Show($"Недостаточно остатка. Доступно: {stock}", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var sale = new Sale
+            {
+                SaleDate = DateTime.Now,
+                TotalAmount = SaleQuantity * SalePrice,
+                SaleItems =
+                {
+                    new SaleItem
+                    {
+                        ProductId = SelectedSaleProduct.ProductId,
+                        Quantity = SaleQuantity,
+                        Price = SalePrice
+                    }
+                }
+            };
+
+            db.Sales.Add(sale);
+            db.SaveChanges();
+
+            MessageBox.Show("Продажа сохранена.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            LoadAll();
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowErrorAsync($"Ошибка продажи: {ex.Message}");
+            MessageBox.Show($"Ошибка создания продажи: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally
+    }
+
+    private static Product CloneProduct(Product source)
+    {
+        return new Product
         {
-            IsBusy = false;
-        }
+            ProductId = source.ProductId,
+            Sku = source.Sku,
+            ProductName = source.ProductName,
+            CategoryId = source.CategoryId,
+            UnitId = source.UnitId,
+            MinStockLevel = source.MinStockLevel,
+            Description = source.Description,
+            IsActive = source.IsActive
+        };
     }
 
     private void RaiseCommandStates()
     {
-        var commands = new ICommand[]
-        {
-            LoadCommand, SaveProductCommand, NewProductCommand, DeleteProductCommand,
-            AddSupplierCommand, AddCategoryCommand, AddUnitCommand,
-            AddReceiptLineCommand, RemoveReceiptLineCommand, CreateReceiptCommand,
-            AddSaleLineCommand, RemoveSaleLineCommand, CreateSaleCommand
-        };
+        RaiseCanExecute(SaveProductCommand, DeleteProductCommand, CreateReceiptCommand, CreateSaleCommand);
+    }
 
-        foreach (var command in commands)
+    private static void RaiseCanExecute(params ICommand[] commands)
+    {
+        foreach (var command in commands.OfType<RelayCommand>())
         {
-            switch (command)
-            {
-                case RelayCommand relay:
-                    relay.RaiseCanExecuteChanged();
-                    break;
-                case AsyncRelayCommand asyncRelay:
-                    asyncRelay.RaiseCanExecuteChanged();
-                    break;
-            }
+            command.RaiseCanExecuteChanged();
         }
+    }
+
+    private static string? Prompt(string title, string message)
+    {
+        return Microsoft.VisualBasic.Interaction.InputBox(message, title);
     }
 }
 
