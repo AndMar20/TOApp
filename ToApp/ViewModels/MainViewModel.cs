@@ -246,6 +246,9 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    // Backward-compatible wrapper: keeps references that still call SaveProduct().
+    private Task SaveProduct() => SaveProductAsync();
+
     private void CreateNewProduct()
     {
         if (Categories.Count == 0 || Units.Count == 0)
