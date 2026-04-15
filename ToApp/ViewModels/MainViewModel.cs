@@ -25,6 +25,7 @@ public sealed class MainViewModel : ObservableObject
     {
     }
 
+
     public MainViewModel(IInventoryService inventoryService, IDialogService dialogService)
     {
         ArgumentNullException.ThrowIfNull(inventoryService);
