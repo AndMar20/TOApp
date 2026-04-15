@@ -136,14 +136,16 @@
                             <Button Content="Добавить" Command="{Binding AddSupplierCommand}" DockPanel.Dock="Bottom" Margin="0,10,0,0"/>
                             <ListBox ItemsSource="{Binding Suppliers}" DisplayMemberPath="SupplierName"/>
                         </DockPanel>
-                    </GroupBox>
+                    </Border>
+                </TabItem>
 
                     <GroupBox Header="Категории" Grid.Column="1">
                         <DockPanel>
                             <Button Content="Добавить" Command="{Binding AddCategoryCommand}" DockPanel.Dock="Bottom" Margin="0,10,0,0"/>
                             <ListBox ItemsSource="{Binding Categories}" DisplayMemberPath="CategoryName"/>
                         </DockPanel>
-                    </GroupBox>
+                    </Border>
+                </TabItem>
 
                     <GroupBox Header="Единицы измерения" Grid.Column="2">
                         <DockPanel>
