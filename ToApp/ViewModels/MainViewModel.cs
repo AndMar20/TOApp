@@ -12,14 +12,13 @@ public sealed class MainViewModel : ObservableObject
     private readonly IDialogService _dialogService;
 
     private Product? _selectedProduct;
-    private ProductFormModel _productForm = null!;
+    private ProductFormModel _productForm = new();
     private StockBalance? _selectedStockBalance;
     private bool _showOnlyLowStock;
     private string _productSearch = string.Empty;
 
     private Supplier? _selectedReceiptSupplier;
     private DocumentLineFormModel? _selectedReceiptLine;
-
     private DocumentLineFormModel? _selectedSaleLine;
 
     public MainViewModel() : this(new InventoryService(), new DialogService())
@@ -40,6 +39,11 @@ public sealed class MainViewModel : ObservableObject
         Units = new ObservableCollection<Unit>();
         StockBalances = new ObservableCollection<StockBalance>();
 
+        ReceiptLines = new ObservableCollection<DocumentLineFormModel>();
+        SaleLines = new ObservableCollection<DocumentLineFormModel>();
+
+        _productForm.PropertyChanged += ProductForm_PropertyChanged;
+
         LoadCommand = new AsyncRelayCommand(_ => LoadAllAsync());
         SaveProductCommand = new AsyncRelayCommand(_ => SaveProductAsync(), _ => SelectedProduct is not null);
         NewProductCommand = new RelayCommand(_ => CreateNewProduct());
@@ -49,8 +53,13 @@ public sealed class MainViewModel : ObservableObject
         AddCategoryCommand = new AsyncRelayCommand(_ => AddCategoryAsync());
         AddUnitCommand = new AsyncRelayCommand(_ => AddUnitAsync());
 
-        CreateReceiptCommand = new AsyncRelayCommand(_ => CreateReceiptAsync(), _ => SelectedReceiptProduct is not null && SelectedReceiptSupplier is not null && ReceiptQuantity > 0 && ReceiptPrice > 0);
-        CreateSaleCommand = new AsyncRelayCommand(_ => CreateSaleAsync(), _ => SelectedSaleProduct is not null && SaleQuantity > 0 && SalePrice > 0);
+        AddReceiptLineCommand = new RelayCommand(_ => AddReceiptLine());
+        RemoveReceiptLineCommand = new RelayCommand(_ => RemoveReceiptLine(), _ => SelectedReceiptLine is not null);
+        CreateReceiptCommand = new AsyncRelayCommand(_ => CreateReceiptAsync(), _ => SelectedReceiptSupplier is not null && ReceiptLines.Any() && ReceiptLines.All(IsLineValid));
+
+        AddSaleLineCommand = new RelayCommand(_ => AddSaleLine());
+        RemoveSaleLineCommand = new RelayCommand(_ => RemoveSaleLine(), _ => SelectedSaleLine is not null);
+        CreateSaleCommand = new AsyncRelayCommand(_ => CreateSaleAsync(), _ => SaleLines.Any() && SaleLines.All(IsLineValid));
 
         _ = LoadAllAsync();
     }
@@ -82,7 +91,7 @@ public sealed class MainViewModel : ObservableObject
         get => _productForm;
         private set
         {
-            if (_productForm == value)
+            if (ReferenceEquals(_productForm, value))
             {
                 return;
             }
@@ -91,6 +100,7 @@ public sealed class MainViewModel : ObservableObject
             _productForm = value;
             _productForm.PropertyChanged += ProductForm_PropertyChanged;
             OnPropertyChanged();
+            SyncFormToSelectedProduct();
             RaiseCommandStates();
         }
     }
@@ -156,11 +166,12 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _selectedSaleLine, value))
             {
-                _ = LoadAllAsync();
+                RaiseCommandStates();
             }
         }
     }
 
+    public ICommand LoadCommand { get; }
     public ICommand SaveProductCommand { get; }
     public ICommand NewProductCommand { get; }
     public ICommand DeleteProductCommand { get; }
@@ -182,7 +193,7 @@ public sealed class MainViewModel : ObservableObject
     {
         try
         {
-            var snapshot = await _inventoryService.LoadSnapshotAsync(ShowOnlyLowStock, null);
+            var snapshot = await _inventoryService.LoadSnapshotAsync(ShowOnlyLowStock, ProductSearch);
 
             Products.ReplaceWith(snapshot.Products);
             Suppliers.ReplaceWith(snapshot.Suppliers);
@@ -202,10 +213,9 @@ public sealed class MainViewModel : ObservableObject
 
             SelectedReceiptSupplier = Suppliers.FirstOrDefault(x => x.SupplierId == SelectedReceiptSupplier?.SupplierId)
                                       ?? Suppliers.FirstOrDefault();
-            SelectedReceiptProduct = Products.FirstOrDefault(x => x.ProductId == SelectedReceiptProduct?.ProductId)
-                                     ?? Products.FirstOrDefault();
-            SelectedSaleProduct = Products.FirstOrDefault(x => x.ProductId == SelectedSaleProduct?.ProductId)
-                                  ?? Products.FirstOrDefault();
+
+            SyncDocumentLineProductNames(ReceiptLines);
+            SyncDocumentLineProductNames(SaleLines);
 
             OnPropertyChanged(nameof(ProductCount));
             OnPropertyChanged(nameof(SupplierCount));
@@ -224,6 +234,8 @@ public sealed class MainViewModel : ObservableObject
         {
             return;
         }
+
+        SyncFormToSelectedProduct();
 
         if (string.IsNullOrWhiteSpace(SelectedProduct.Sku) || string.IsNullOrWhiteSpace(SelectedProduct.ProductName))
         {
@@ -256,9 +268,6 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    // Backward-compatible wrapper: keeps references that still call SaveProduct().
-    private Task SaveProduct() => SaveProductAsync();
-
     private void CreateNewProduct()
     {
         if (Categories.Count == 0 || Units.Count == 0)
@@ -267,8 +276,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        SelectedProduct = null;
-        ProductForm = new ProductFormModel
+        SelectedProduct = new Product
         {
             IsActive = true,
             CategoryId = Categories[0].CategoryId,
@@ -361,6 +369,45 @@ public sealed class MainViewModel : ObservableObject
         {
             await _dialogService.ShowErrorAsync($"Ошибка добавления единицы измерения: {ex.Message}");
         }
+    }
+
+    private void AddReceiptLine()
+    {
+        var line = CreateDefaultLine();
+        line.PropertyChanged += DocumentLineOnPropertyChanged;
+        ReceiptLines.Add(line);
+        SelectedReceiptLine = line;
+        RaiseCommandStates();
+    }
+
+    private void RemoveReceiptLine()
+    {
+        if (SelectedReceiptLine is null)
+        {
+            return;
+        }
+
+        SelectedReceiptLine.PropertyChanged -= DocumentLineOnPropertyChanged;
+        ReceiptLines.Remove(SelectedReceiptLine);
+        SelectedReceiptLine = ReceiptLines.FirstOrDefault();
+        RaiseCommandStates();
+    }
+
+    private void AddSaleLine()
+    {
+        var line = CreateDefaultLine();
+        line.PropertyChanged += DocumentLineOnPropertyChanged;
+        SaleLines.Add(line);
+        SelectedSaleLine = line;
+        RaiseCommandStates();
+    }
+
+    private void RemoveSaleLine()
+    {
+        if (SelectedSaleLine is null)
+        {
+            return;
+        }
 
         SelectedSaleLine.PropertyChanged -= DocumentLineOnPropertyChanged;
         SaleLines.Remove(SelectedSaleLine);
@@ -370,9 +417,9 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task CreateReceiptAsync()
     {
-        if (SelectedReceiptProduct is null || SelectedReceiptSupplier is null || ReceiptQuantity <= 0 || ReceiptPrice <= 0)
+        if (SelectedReceiptSupplier is null || ReceiptLines.Count == 0 || ReceiptLines.Any(x => !IsLineValid(x)))
         {
-            await _dialogService.ShowErrorAsync("Проверьте товар, поставщика, количество и цену.", "Проверка данных");
+            await _dialogService.ShowErrorAsync("Проверьте поставщика и строки документа.", "Проверка данных");
             return;
         }
 
@@ -380,9 +427,10 @@ public sealed class MainViewModel : ObservableObject
         {
             await _inventoryService.CreateReceiptAsync(
                 SelectedReceiptSupplier.SupplierId,
-                new[] { new DocumentLineRequest { ProductId = SelectedReceiptProduct.ProductId, Quantity = ReceiptQuantity, Price = ReceiptPrice } });
+                ReceiptLines.Select(ToRequest).ToArray());
 
             await _dialogService.ShowInfoAsync("Поступление сохранено.", "Успех");
+            ResetReceiptLines();
             await LoadAllAsync();
         }
         catch (Exception ex)
@@ -393,24 +441,29 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task CreateSaleAsync()
     {
-        if (SelectedSaleProduct is null || SaleQuantity <= 0 || SalePrice <= 0)
+        if (SaleLines.Count == 0 || SaleLines.Any(x => !IsLineValid(x)))
         {
-            await _dialogService.ShowErrorAsync("Проверьте товар, количество и цену.", "Проверка данных");
+            await _dialogService.ShowErrorAsync("Проверьте строки документа.", "Проверка данных");
             return;
         }
 
         try
         {
-            await _inventoryService.CreateSaleAsync(
-                new[] { new DocumentLineRequest { ProductId = SelectedSaleProduct.ProductId, Quantity = SaleQuantity, Price = SalePrice } });
+            await _inventoryService.CreateSaleAsync(SaleLines.Select(ToRequest).ToArray());
 
             await _dialogService.ShowInfoAsync("Продажа сохранена.", "Успех");
+            ResetSaleLines();
             await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowErrorAsync($"Ошибка создания продажи: {ex.Message}");
         }
     }
 
     private void ProductForm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        SyncFormToSelectedProduct();
         RaiseCommandStates();
     }
 
@@ -418,7 +471,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (sender is not DocumentLineFormModel line)
         {
-            await _dialogService.ShowErrorAsync($"Ошибка создания продажи: {ex.Message}");
+            return;
         }
 
         if (e.PropertyName == nameof(DocumentLineFormModel.ProductId))
@@ -429,6 +482,76 @@ public sealed class MainViewModel : ObservableObject
 
         RaiseCommandStates();
     }
+
+    private void SyncFormToSelectedProduct()
+    {
+        if (SelectedProduct is null)
+        {
+            return;
+        }
+
+        SelectedProduct.Sku = ProductForm.Sku;
+        SelectedProduct.ProductName = ProductForm.ProductName;
+        SelectedProduct.CategoryId = ProductForm.CategoryId;
+        SelectedProduct.UnitId = ProductForm.UnitId;
+        SelectedProduct.MinStockLevel = ProductForm.MinStockLevel;
+        SelectedProduct.Description = ProductForm.Description;
+        SelectedProduct.IsActive = ProductForm.IsActive;
+    }
+
+    private void SyncDocumentLineProductNames(IEnumerable<DocumentLineFormModel> lines)
+    {
+        foreach (var line in lines)
+        {
+            var product = Products.FirstOrDefault(x => x.ProductId == line.ProductId);
+            line.ProductName = product?.ProductName ?? string.Empty;
+        }
+    }
+
+    private DocumentLineFormModel CreateDefaultLine()
+    {
+        var product = Products.FirstOrDefault();
+        return new DocumentLineFormModel
+        {
+            ProductId = product?.ProductId ?? 0,
+            ProductName = product?.ProductName ?? string.Empty,
+            Quantity = 1,
+            Price = 0
+        };
+    }
+
+    private void ResetReceiptLines()
+    {
+        foreach (var line in ReceiptLines)
+        {
+            line.PropertyChanged -= DocumentLineOnPropertyChanged;
+        }
+
+        ReceiptLines.Clear();
+        SelectedReceiptLine = null;
+    }
+
+    private void ResetSaleLines()
+    {
+        foreach (var line in SaleLines)
+        {
+            line.PropertyChanged -= DocumentLineOnPropertyChanged;
+        }
+
+        SaleLines.Clear();
+        SelectedSaleLine = null;
+    }
+
+    private static bool IsLineValid(DocumentLineFormModel line)
+        => line.ProductId > 0 && line.Quantity > 0 && line.Price > 0;
+
+    private static DocumentLineRequest ToRequest(DocumentLineFormModel line)
+        => new()
+        {
+            ProductId = line.ProductId,
+            Quantity = line.Quantity,
+            Price = line.Price
+        };
 
     private void RaiseCommandStates()
     {
