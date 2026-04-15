@@ -4,208 +4,269 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Товары для дома — учет" Height="820" Width="1280" MinHeight="680" MinWidth="1080">
-    <DockPanel Margin="16">
-        <Border DockPanel.Dock="Top" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
-            <DockPanel LastChildFill="True">
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Text="Учет товаров хозяйственного магазина" FontWeight="SemiBold" FontSize="21"/>
-                    <TextBlock Text="Склад, поступления и продажи в едином интерфейсе" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0"/>
+        Title="Товары для дома — учет"
+        Height="860"
+        Width="1340"
+        MinHeight="720"
+        MinWidth="1160">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource CardBorderStyle}" Padding="20,18">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Управление складом и документами" FontSize="26" FontWeight="Bold"/>
+                    <TextBlock Text="Современное рабочее место: товары, справочники, поступления, продажи и остатки"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="0,6,0,0"/>
                 </StackPanel>
-            </DockPanel>
+
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Border Background="#FFDBEAFE" CornerRadius="999" Padding="10,4" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Товаров: " FontSize="12" FontWeight="SemiBold" Foreground="#FF1D4ED8"/>
+                            <TextBlock Text="{Binding ProductCount}" FontSize="12" FontWeight="SemiBold" Foreground="#FF1D4ED8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#FFE0F2FE" CornerRadius="999" Padding="10,4" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Поставщиков: " FontSize="12" FontWeight="SemiBold" Foreground="#FF0369A1"/>
+                            <TextBlock Text="{Binding SupplierCount}" FontSize="12" FontWeight="SemiBold" Foreground="#FF0369A1"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#FFDCFCE7" CornerRadius="999" Padding="10,4">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Низкий остаток: " FontSize="12" FontWeight="SemiBold" Foreground="#FF166534"/>
+                            <TextBlock Text="{Binding LowStockCount}" FontSize="12" FontWeight="SemiBold" Foreground="#FF166534"/>
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+            </Grid>
         </Border>
 
-        <TabControl>
-            <TabItem Header="Сводка">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Padding="10" Margin="0">
+            <TabControl>
+                <TabItem Header="Сводка">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Товаров" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock Text="{Binding ProductCount}" FontSize="34" FontWeight="Bold"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Поставщиков" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock Text="{Binding SupplierCount}" FontSize="34" FontWeight="Bold"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Низкий остаток" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock Text="{Binding LowStockCount}" FontSize="34" FontWeight="Bold"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="Товары">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <DockPanel Grid.Column="0">
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
-                            <TextBlock Text="Поиск" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource FieldLabelStyle}"/>
-                            <TextBox Width="260" Text="{Binding ProductSearch, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                        <DataGrid ItemsSource="{Binding Products}"
-                              SelectedItem="{Binding SelectedProduct}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding ProductId}" Width="60"/>
-                            <DataGridTextColumn Header="Артикул" Binding="{Binding Sku}" Width="120"/>
-                            <DataGridTextColumn Header="Наименование" Binding="{Binding ProductName}" Width="*"/>
-                            <DataGridTextColumn Header="Мин. остаток" Binding="{Binding MinStockLevel}" Width="120"/>
-                            <DataGridCheckBoxColumn Header="Активен" Binding="{Binding IsActive}" Width="80"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    </DockPanel>
-
-                    <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="Карточка товара" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Артикул" Style="{StaticResource FieldLabelStyle}"/>
-                            <TextBox Text="{Binding ProductForm.Sku, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
-                            <TextBlock Text="Наименование" Style="{StaticResource FieldLabelStyle}"/>
-                            <TextBox Text="{Binding ProductForm.ProductName, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
-                            <TextBlock Text="Категория" Style="{StaticResource FieldLabelStyle}"/>
-                            <ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding ProductForm.CategoryId, ValidatesOnDataErrors=True}" SelectedValuePath="CategoryId" DisplayMemberPath="CategoryName"/>
-                            <TextBlock Text="Ед. измерения" Style="{StaticResource FieldLabelStyle}"/>
-                            <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding ProductForm.UnitId, ValidatesOnDataErrors=True}" SelectedValuePath="UnitId" DisplayMemberPath="UnitName"/>
-                            <TextBlock Text="Мин. остаток" Style="{StaticResource FieldLabelStyle}"/>
-                            <TextBox Text="{Binding ProductForm.MinStockLevel, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
-                            <TextBlock Text="Описание" Style="{StaticResource FieldLabelStyle}"/>
-                            <TextBox Text="{Binding ProductForm.Description, UpdateSourceTrigger=PropertyChanged}" Height="70" AcceptsReturn="True"/>
-                            <CheckBox IsChecked="{Binding ProductForm.IsActive}" Content="Активен" Margin="0,8,0,0"/>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                <Button Content="Новый" Command="{Binding NewProductCommand}" Margin="0,0,8,0"/>
-                                <Button Content="Сохранить" Command="{Binding SaveProductCommand}" Margin="0,0,8,0"/>
-                                <Button Content="Деактивировать" Command="{Binding DeleteProductCommand}"/>
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="20,18">
+                            <StackPanel>
+                                <TextBlock Text="Товаров" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding ProductCount}" FontSize="40" FontWeight="Bold" Margin="0,2,0,0"/>
                             </StackPanel>
-                        </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="20,18">
+                            <StackPanel>
+                                <TextBlock Text="Поставщиков" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding SupplierCount}" FontSize="40" FontWeight="Bold" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="20,18">
+                            <StackPanel>
+                                <TextBlock Text="Низкий остаток" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding LowStockCount}" FontSize="40" FontWeight="Bold" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Товары">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.2*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="14">
+                            <DockPanel>
+                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,10">
+                                    <TextBlock Text="Поиск" VerticalAlignment="Center" Margin="0,0,8,0" Style="{StaticResource FieldLabelStyle}"/>
+                                    <TextBox Width="320" Margin="0" ToolTip="Введите артикул или наименование" Text="{Binding ProductSearch, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+
+                                <DataGrid ItemsSource="{Binding Products}"
+                                          SelectedItem="{Binding SelectedProduct}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID" Binding="{Binding ProductId}" Width="70"/>
+                                        <DataGridTextColumn Header="Артикул" Binding="{Binding Sku}" Width="130"/>
+                                        <DataGridTextColumn Header="Наименование" Binding="{Binding ProductName}" Width="*"/>
+                                        <DataGridTextColumn Header="Мин. остаток" Binding="{Binding MinStockLevel}" Width="120"/>
+                                        <DataGridCheckBoxColumn Header="Активен" Binding="{Binding IsActive}" Width="90"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="0">
+                            <DockPanel LastChildFill="True">
+                                <Border DockPanel.Dock="Bottom" Padding="16" BorderBrush="{StaticResource BorderBrushSoft}" BorderThickness="0,1,0,0">
+                                    <UniformGrid Columns="3">
+                                        <Button Content="Новый" Command="{Binding NewProductCommand}" Margin="0,0,8,0"/>
+                                        <Button Content="Сохранить" Command="{Binding SaveProductCommand}" Margin="0,0,8,0"/>
+                                        <Button Content="Деактивировать" Command="{Binding DeleteProductCommand}" Style="{StaticResource DangerButtonStyle}"/>
+                                    </UniformGrid>
+                                </Border>
+
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16">
+                                    <StackPanel>
+                                        <TextBlock Text="Карточка товара" Style="{StaticResource SectionTitleStyle}"/>
+
+                                        <TextBlock Text="Артикул" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBox Text="{Binding ProductForm.Sku, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+
+                                        <TextBlock Text="Наименование" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBox Text="{Binding ProductForm.ProductName, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+
+                                        <TextBlock Text="Категория" Style="{StaticResource FieldLabelStyle}"/>
+                                        <ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding ProductForm.CategoryId, ValidatesOnDataErrors=True}" SelectedValuePath="CategoryId" DisplayMemberPath="CategoryName"/>
+
+                                        <TextBlock Text="Ед. измерения" Style="{StaticResource FieldLabelStyle}"/>
+                                        <ComboBox ItemsSource="{Binding Units}" SelectedValue="{Binding ProductForm.UnitId, ValidatesOnDataErrors=True}" SelectedValuePath="UnitId" DisplayMemberPath="UnitName"/>
+
+                                        <TextBlock Text="Мин. остаток" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBox Text="{Binding ProductForm.MinStockLevel, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"/>
+
+                                        <TextBlock Text="Описание" Style="{StaticResource FieldLabelStyle}"/>
+                                        <TextBox Text="{Binding ProductForm.Description, UpdateSourceTrigger=PropertyChanged}" Height="84" AcceptsReturn="True" TextWrapping="Wrap"/>
+
+                                        <CheckBox IsChecked="{Binding ProductForm.IsActive}" Content="Товар активен" Margin="0,12,0,0"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Справочники">
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Header="Поставщики" Grid.Column="0">
+                            <DockPanel>
+                                <Button Content="Добавить" Command="{Binding AddSupplierCommand}" DockPanel.Dock="Bottom" Margin="0,10,0,0"/>
+                                <ListBox ItemsSource="{Binding Suppliers}" DisplayMemberPath="SupplierName"/>
+                            </DockPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Категории" Grid.Column="1">
+                            <DockPanel>
+                                <Button Content="Добавить" Command="{Binding AddCategoryCommand}" DockPanel.Dock="Bottom" Margin="0,10,0,0"/>
+                                <ListBox ItemsSource="{Binding Categories}" DisplayMemberPath="CategoryName"/>
+                            </DockPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Единицы измерения" Grid.Column="2">
+                            <DockPanel>
+                                <Button Content="Добавить" Command="{Binding AddUnitCommand}" DockPanel.Dock="Bottom" Margin="0,10,0,0"/>
+                                <ListBox ItemsSource="{Binding Units}" DisplayMemberPath="UnitName"/>
+                            </DockPanel>
+                        </GroupBox>
+                    </Grid>
+                </TabItem>
+
+                <TabItem Header="Поступление">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="12" Padding="16">
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,12">
+                                <TextBlock Text="Поставщик" Style="{StaticResource FieldLabelStyle}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <ComboBox Width="320" Margin="0" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
+                                <Button Content="+ Строка" Command="{Binding AddReceiptLineCommand}" Margin="12,0,0,0" MinWidth="105"/>
+                                <Button Content="- Строка" Command="{Binding RemoveReceiptLineCommand}" Margin="8,0,0,0" MinWidth="105" Style="{StaticResource SecondaryButtonStyle}"/>
+                            </StackPanel>
+
+                            <DataGrid ItemsSource="{Binding ReceiptLines}" SelectedItem="{Binding SelectedReceiptLine}" AutoGenerateColumns="False" CanUserAddRows="False" Margin="0,0,0,12">
+                                <DataGrid.Columns>
+                                    <DataGridComboBoxColumn Header="Товар"
+                                                            Width="*"
+                                                            SelectedValueBinding="{Binding ProductId, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                                                            SelectedValuePath="ProductId"
+                                                            DisplayMemberPath="ProductName"
+                                                            ItemsSource="{Binding DataContext.Products, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    <DataGridTextColumn Header="Количество" Width="140" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, ValidatesOnDataErrors=True}"/>
+                                    <DataGridTextColumn Header="Цена закупки" Width="160" Binding="{Binding Price, UpdateSourceTrigger=PropertyChanged, StringFormat=N2, ValidatesOnDataErrors=True}"/>
+                                    <DataGridTextColumn Header="Сумма" Width="140" IsReadOnly="True" Binding="{Binding Amount, StringFormat=N2}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Button Content="Провести поступление" Command="{Binding CreateReceiptCommand}" DockPanel.Dock="Bottom" Width="240" Height="38"/>
+                        </DockPanel>
                     </Border>
-                </Grid>
-            </TabItem>
+                </TabItem>
 
-            <TabItem Header="Справочники">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-
-                    <GroupBox Header="Поставщики" Margin="6" Grid.Column="0">
+                <TabItem Header="Продажа">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="12" Padding="16">
                         <DockPanel>
-                            <Button Content="Добавить" Command="{Binding AddSupplierCommand}" DockPanel.Dock="Bottom" Margin="0,8,0,0"/>
-                            <ListBox ItemsSource="{Binding Suppliers}" DisplayMemberPath="SupplierName"/>
-                        </DockPanel>
-                    </GroupBox>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,12">
+                                <Button Content="+ Строка" Command="{Binding AddSaleLineCommand}" MinWidth="105"/>
+                                <Button Content="- Строка" Command="{Binding RemoveSaleLineCommand}" Margin="8,0,0,0" MinWidth="105" Style="{StaticResource SecondaryButtonStyle}"/>
+                            </StackPanel>
 
-                    <GroupBox Header="Категории" Margin="6" Grid.Column="1">
+                            <DataGrid ItemsSource="{Binding SaleLines}" SelectedItem="{Binding SelectedSaleLine}" AutoGenerateColumns="False" CanUserAddRows="False" Margin="0,0,0,12">
+                                <DataGrid.Columns>
+                                    <DataGridComboBoxColumn Header="Товар"
+                                                            Width="*"
+                                                            SelectedValueBinding="{Binding ProductId, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                                                            SelectedValuePath="ProductId"
+                                                            DisplayMemberPath="ProductName"
+                                                            ItemsSource="{Binding DataContext.Products, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    <DataGridTextColumn Header="Количество" Width="140" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, ValidatesOnDataErrors=True}"/>
+                                    <DataGridTextColumn Header="Цена продажи" Width="160" Binding="{Binding Price, UpdateSourceTrigger=PropertyChanged, StringFormat=N2, ValidatesOnDataErrors=True}"/>
+                                    <DataGridTextColumn Header="Сумма" Width="140" IsReadOnly="True" Binding="{Binding Amount, StringFormat=N2}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <Button Content="Провести продажу" Command="{Binding CreateSaleCommand}" DockPanel.Dock="Bottom" Width="220" Height="38"/>
+                        </DockPanel>
+                    </Border>
+                </TabItem>
+
+                <TabItem Header="Остатки">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="10" Padding="14">
                         <DockPanel>
-                            <Button Content="Добавить" Command="{Binding AddCategoryCommand}" DockPanel.Dock="Bottom" Margin="0,8,0,0"/>
-                            <ListBox ItemsSource="{Binding Categories}" DisplayMemberPath="CategoryName"/>
+                            <CheckBox Content="Показывать только товары с низким остатком"
+                                      IsChecked="{Binding ShowOnlyLowStock}"
+                                      DockPanel.Dock="Top"
+                                      Margin="0,0,0,10"/>
+
+                            <DataGrid ItemsSource="{Binding StockBalances}" SelectedItem="{Binding SelectedStockBalance}" AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Артикул" Binding="{Binding Sku}" Width="120"/>
+                                    <DataGridTextColumn Header="Наименование" Binding="{Binding ProductName}" Width="*"/>
+                                    <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="160"/>
+                                    <DataGridTextColumn Header="Ед." Binding="{Binding UnitShortName}" Width="70"/>
+                                    <DataGridTextColumn Header="Мин." Binding="{Binding MinStockLevel}" Width="80"/>
+                                    <DataGridTextColumn Header="Остаток" Binding="{Binding CurrentStock}" Width="100"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </DockPanel>
-                    </GroupBox>
-
-                    <GroupBox Header="Единицы измерения" Margin="6" Grid.Column="2">
-                        <DockPanel>
-                            <Button Content="Добавить" Command="{Binding AddUnitCommand}" DockPanel.Dock="Bottom" Margin="0,8,0,0"/>
-                            <ListBox ItemsSource="{Binding Units}" DisplayMemberPath="UnitName"/>
-                        </DockPanel>
-                    </GroupBox>
-                </Grid>
-            </TabItem>
-
-            <TabItem Header="Поступление">
-                <Border Style="{StaticResource CardBorderStyle}" Margin="16">
-                    <DockPanel>
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,10">
-                            <TextBlock Text="Поставщик" Style="{StaticResource FieldLabelStyle}" VerticalAlignment="Center"/>
-                            <ComboBox Width="280" Margin="8,0,0,0" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedReceiptSupplier}" DisplayMemberPath="SupplierName"/>
-                            <Button Content="+ Строка" Command="{Binding AddReceiptLineCommand}" Margin="12,0,0,0"/>
-                            <Button Content="- Строка" Command="{Binding RemoveReceiptLineCommand}" Margin="8,0,0,0"/>
-                        </StackPanel>
-
-                        <DataGrid ItemsSource="{Binding ReceiptLines}" SelectedItem="{Binding SelectedReceiptLine}" AutoGenerateColumns="False" CanUserAddRows="False" Margin="0,0,0,10">
-                            <DataGrid.Columns>
-                                <DataGridComboBoxColumn Header="Товар"
-                                                        Width="*"
-                                                        SelectedValueBinding="{Binding ProductId, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
-                                                        SelectedValuePath="ProductId"
-                                                        DisplayMemberPath="ProductName"
-                                                        ItemsSource="{Binding DataContext.Products, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <DataGridTextColumn Header="Количество" Width="140" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, ValidatesOnDataErrors=True}"/>
-                                <DataGridTextColumn Header="Цена закупки" Width="160" Binding="{Binding Price, UpdateSourceTrigger=PropertyChanged, StringFormat=N2, ValidatesOnDataErrors=True}"/>
-                                <DataGridTextColumn Header="Сумма" Width="140" IsReadOnly="True" Binding="{Binding Amount, StringFormat=N2}"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <Button Content="Провести поступление" Command="{Binding CreateReceiptCommand}" DockPanel.Dock="Bottom" Width="220"/>
-                    </DockPanel>
-                </Border>
-            </TabItem>
-
-            <TabItem Header="Продажа">
-                <Border Style="{StaticResource CardBorderStyle}" Margin="16">
-                    <DockPanel>
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,10">
-                            <Button Content="+ Строка" Command="{Binding AddSaleLineCommand}"/>
-                            <Button Content="- Строка" Command="{Binding RemoveSaleLineCommand}" Margin="8,0,0,0"/>
-                        </StackPanel>
-
-                        <DataGrid ItemsSource="{Binding SaleLines}" SelectedItem="{Binding SelectedSaleLine}" AutoGenerateColumns="False" CanUserAddRows="False" Margin="0,0,0,10">
-                            <DataGrid.Columns>
-                                <DataGridComboBoxColumn Header="Товар"
-                                                        Width="*"
-                                                        SelectedValueBinding="{Binding ProductId, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
-                                                        SelectedValuePath="ProductId"
-                                                        DisplayMemberPath="ProductName"
-                                                        ItemsSource="{Binding DataContext.Products, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <DataGridTextColumn Header="Количество" Width="140" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=N0, ValidatesOnDataErrors=True}"/>
-                                <DataGridTextColumn Header="Цена продажи" Width="160" Binding="{Binding Price, UpdateSourceTrigger=PropertyChanged, StringFormat=N2, ValidatesOnDataErrors=True}"/>
-                                <DataGridTextColumn Header="Сумма" Width="140" IsReadOnly="True" Binding="{Binding Amount, StringFormat=N2}"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <Button Content="Провести продажу" Command="{Binding CreateSaleCommand}" DockPanel.Dock="Bottom" Width="220"/>
-                    </DockPanel>
-                </Border>
-            </TabItem>
-
-            <TabItem Header="Остатки">
-                <DockPanel Margin="10">
-                    <CheckBox Content="Показывать только товары с низким остатком"
-                              IsChecked="{Binding ShowOnlyLowStock}"
-                              DockPanel.Dock="Top"
-                              Margin="0,0,0,8"/>
-                    <DataGrid ItemsSource="{Binding StockBalances}" SelectedItem="{Binding SelectedStockBalance}" AutoGenerateColumns="False" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Артикул" Binding="{Binding Sku}" Width="120"/>
-                            <DataGridTextColumn Header="Наименование" Binding="{Binding ProductName}" Width="*"/>
-                            <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="160"/>
-                            <DataGridTextColumn Header="Ед." Binding="{Binding UnitShortName}" Width="70"/>
-                            <DataGridTextColumn Header="Мин." Binding="{Binding MinStockLevel}" Width="80"/>
-                            <DataGridTextColumn Header="Остаток" Binding="{Binding CurrentStock}" Width="100"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </TabItem>
-        </TabControl>
-    </DockPanel>
+                    </Border>
+                </TabItem>
+            </TabControl>
+        </Border>
+    </Grid>
 </Window>
