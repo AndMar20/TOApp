@@ -1,4 +1,5 @@
 using System.Windows;
+using ToApp.Services;
 using ToApp.ViewModels;
 
 namespace ToApp;
@@ -9,7 +10,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        var vm = new MainViewModel();
+        var vm = new MainViewModel(new InventoryService(), new DialogService());
 
         var window = new MainWindow
         {
