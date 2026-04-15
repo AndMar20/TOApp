@@ -34,12 +34,7 @@ public sealed class MainViewModel : ObservableObject
         Units = new ObservableCollection<Unit>();
         StockBalances = new ObservableCollection<StockBalance>();
 
-        ReceiptLines = new ObservableCollection<DocumentLineFormModel>();
-        SaleLines = new ObservableCollection<DocumentLineFormModel>();
-        ProductForm = new ProductFormModel();
-
-        LoadCommand = new AsyncRelayCommand(_ => LoadAllAsync());
-        SaveProductCommand = new AsyncRelayCommand(_ => SaveProductAsync(), _ => ProductForm.IsValid);
+        SaveProductCommand = new RelayCommand(_ => SaveProduct(), _ => SelectedProduct is not null);
         NewProductCommand = new RelayCommand(_ => CreateNewProduct());
         DeleteProductCommand = new AsyncRelayCommand(_ => DeactivateProductAsync(), _ => SelectedProduct?.ProductId > 0);
 
@@ -93,10 +88,7 @@ public sealed class MainViewModel : ObservableObject
                 return;
             }
 
-            if (_productForm is not null)
-            {
-                _productForm.PropertyChanged -= ProductForm_PropertyChanged;
-            }
+            _productForm.PropertyChanged -= ProductForm_PropertyChanged;
             _productForm = value;
             _productForm.PropertyChanged += ProductForm_PropertyChanged;
             OnPropertyChanged();
@@ -170,7 +162,6 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public ICommand LoadCommand { get; }
     public ICommand SaveProductCommand { get; }
     public ICommand NewProductCommand { get; }
     public ICommand DeleteProductCommand { get; }

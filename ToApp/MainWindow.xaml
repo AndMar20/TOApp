@@ -7,12 +7,11 @@
         Title="Товары для дома — учет" Height="820" Width="1280" MinHeight="680" MinWidth="1080">
     <DockPanel Margin="16">
         <Border DockPanel.Dock="Top" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,10">
-            <DockPanel LastChildFill="False">
-                <StackPanel Orientation="Vertical" DockPanel.Dock="Left">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Vertical">
                     <TextBlock Text="Учет товаров хозяйственного магазина" FontWeight="SemiBold" FontSize="21"/>
                     <TextBlock Text="Склад, поступления и продажи в едином интерфейсе" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0"/>
                 </StackPanel>
-                <Button Content="Обновить" Command="{Binding LoadCommand}" DockPanel.Dock="Right"/>
             </DockPanel>
         </Border>
 
