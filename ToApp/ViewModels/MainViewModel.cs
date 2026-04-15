@@ -1,14 +1,16 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using System.Windows.Input;
-using Microsoft.EntityFrameworkCore;
 using TOData.Models;
 using ToApp.Infrastructure;
+using ToApp.Services;
 
 namespace ToApp.ViewModels;
 
 public sealed class MainViewModel : ObservableObject
 {
+    private readonly IInventoryService _inventoryService;
+    private readonly IDialogService _dialogService;
+
     private Product? _selectedProduct;
     private Supplier? _selectedSupplier;
     private Category? _selectedCategory;
@@ -23,27 +25,37 @@ public sealed class MainViewModel : ObservableObject
     private int _saleQuantity = 1;
     private decimal _salePrice;
 
-    public MainViewModel()
+    public MainViewModel() : this(new InventoryService(), new DialogService())
     {
+    }
+
+    public MainViewModel(IInventoryService inventoryService, IDialogService dialogService)
+    {
+        ArgumentNullException.ThrowIfNull(inventoryService);
+        ArgumentNullException.ThrowIfNull(dialogService);
+
+        _inventoryService = inventoryService;
+        _dialogService = dialogService;
+
         Products = new ObservableCollection<Product>();
         Suppliers = new ObservableCollection<Supplier>();
         Categories = new ObservableCollection<Category>();
         Units = new ObservableCollection<Unit>();
         StockBalances = new ObservableCollection<StockBalance>();
 
-        LoadCommand = new RelayCommand(_ => LoadAll());
-        SaveProductCommand = new RelayCommand(_ => SaveProduct(), _ => SelectedProduct is not null);
+        LoadCommand = new AsyncRelayCommand(_ => LoadAllAsync());
+        SaveProductCommand = new AsyncRelayCommand(_ => SaveProductAsync(), _ => SelectedProduct is not null);
         NewProductCommand = new RelayCommand(_ => CreateNewProduct());
-        DeleteProductCommand = new RelayCommand(_ => DeleteProduct(), _ => SelectedProduct is not null && SelectedProduct.ProductId > 0);
+        DeleteProductCommand = new AsyncRelayCommand(_ => DeactivateProductAsync(), _ => SelectedProduct is not null && SelectedProduct.ProductId > 0);
 
-        AddSupplierCommand = new RelayCommand(_ => AddSupplier());
-        AddCategoryCommand = new RelayCommand(_ => AddCategory());
-        AddUnitCommand = new RelayCommand(_ => AddUnit());
+        AddSupplierCommand = new AsyncRelayCommand(_ => AddSupplierAsync());
+        AddCategoryCommand = new AsyncRelayCommand(_ => AddCategoryAsync());
+        AddUnitCommand = new AsyncRelayCommand(_ => AddUnitAsync());
 
-        CreateReceiptCommand = new RelayCommand(_ => CreateReceipt(), _ => SelectedReceiptProduct is not null && SelectedReceiptSupplier is not null && ReceiptQuantity > 0 && ReceiptPrice > 0);
-        CreateSaleCommand = new RelayCommand(_ => CreateSale(), _ => SelectedSaleProduct is not null && SaleQuantity > 0 && SalePrice > 0);
+        CreateReceiptCommand = new AsyncRelayCommand(_ => CreateReceiptAsync(), _ => SelectedReceiptProduct is not null && SelectedReceiptSupplier is not null && ReceiptQuantity > 0 && ReceiptPrice > 0);
+        CreateSaleCommand = new AsyncRelayCommand(_ => CreateSaleAsync(), _ => SelectedSaleProduct is not null && SaleQuantity > 0 && SalePrice > 0);
 
-        LoadAll();
+        _ = LoadAllAsync();
     }
 
     public ObservableCollection<Product> Products { get; }
@@ -179,7 +191,7 @@ public sealed class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _showOnlyLowStock, value))
             {
-                LoadStock();
+                _ = LoadAllAsync();
             }
         }
     }
@@ -198,38 +210,35 @@ public sealed class MainViewModel : ObservableObject
     public int SupplierCount => Suppliers.Count;
     public int LowStockCount => StockBalances.Count(x => (x.CurrentStock ?? 0) <= x.MinStockLevel);
 
-    private void LoadAll()
+    private async Task LoadAllAsync()
     {
         try
         {
-            using var db = new TodbContext();
+            var snapshot = await _inventoryService.LoadSnapshotAsync(ShowOnlyLowStock, null);
 
-            Products.ReplaceWith(db.Products.AsNoTracking().OrderBy(x => x.ProductName).ToList());
-            Suppliers.ReplaceWith(db.Suppliers.AsNoTracking().OrderBy(x => x.SupplierName).ToList());
-            Categories.ReplaceWith(db.Categories.AsNoTracking().OrderBy(x => x.CategoryName).ToList());
-            Units.ReplaceWith(db.Units.AsNoTracking().OrderBy(x => x.UnitName).ToList());
+            Products.ReplaceWith(snapshot.Products);
+            Suppliers.ReplaceWith(snapshot.Suppliers);
+            Categories.ReplaceWith(snapshot.Categories);
+            Units.ReplaceWith(snapshot.Units);
+            StockBalances.ReplaceWith(snapshot.StockBalances);
 
-            if (SelectedProduct is null && Products.Count > 0)
+            if (SelectedProduct is not null)
             {
-                SelectedProduct = CloneProduct(Products[0]);
+                SelectedProduct = Products.FirstOrDefault(x => x.ProductId == SelectedProduct.ProductId)
+                                  ?? Products.FirstOrDefault();
+            }
+            else
+            {
+                SelectedProduct = Products.FirstOrDefault();
             }
 
-            if (SelectedReceiptSupplier is null && Suppliers.Count > 0)
-            {
-                SelectedReceiptSupplier = Suppliers[0];
-            }
+            SelectedReceiptSupplier = Suppliers.FirstOrDefault(x => x.SupplierId == SelectedReceiptSupplier?.SupplierId)
+                                      ?? Suppliers.FirstOrDefault();
+            SelectedReceiptProduct = Products.FirstOrDefault(x => x.ProductId == SelectedReceiptProduct?.ProductId)
+                                     ?? Products.FirstOrDefault();
+            SelectedSaleProduct = Products.FirstOrDefault(x => x.ProductId == SelectedSaleProduct?.ProductId)
+                                  ?? Products.FirstOrDefault();
 
-            if (SelectedReceiptProduct is null && Products.Count > 0)
-            {
-                SelectedReceiptProduct = Products[0];
-            }
-
-            if (SelectedSaleProduct is null && Products.Count > 0)
-            {
-                SelectedSaleProduct = Products[0];
-            }
-
-            LoadStock(db);
             OnPropertyChanged(nameof(ProductCount));
             OnPropertyChanged(nameof(SupplierCount));
             OnPropertyChanged(nameof(LowStockCount));
@@ -237,62 +246,45 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка загрузки данных: {ex.Message}");
         }
     }
 
-    private void LoadStock(TodbContext? dbContext = null)
-    {
-        var ownContext = dbContext is null;
-        using var db = ownContext ? new TodbContext() : null;
-        var context = dbContext ?? db!;
-
-        var query = context.StockBalances.AsNoTracking().OrderBy(x => x.ProductName).AsQueryable();
-        if (ShowOnlyLowStock)
-        {
-            query = query.Where(x => (x.CurrentStock ?? 0) <= x.MinStockLevel);
-        }
-
-        StockBalances.ReplaceWith(query.ToList());
-        OnPropertyChanged(nameof(LowStockCount));
-    }
-
-    private void SaveProduct()
+    private async Task SaveProductAsync()
     {
         if (SelectedProduct is null)
         {
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(SelectedProduct.Sku) || string.IsNullOrWhiteSpace(SelectedProduct.ProductName))
+        {
+            await _dialogService.ShowErrorAsync("Артикул и наименование обязательны.", "Проверка данных");
+            return;
+        }
+
+        if (SelectedProduct.CategoryId <= 0 || SelectedProduct.UnitId <= 0)
+        {
+            await _dialogService.ShowErrorAsync("Выберите категорию и единицу измерения.", "Проверка данных");
+            return;
+        }
+
+        if (SelectedProduct.MinStockLevel < 0)
+        {
+            await _dialogService.ShowErrorAsync("Мин. остаток не может быть отрицательным.", "Проверка данных");
+            return;
+        }
+
         try
         {
-            using var db = new TodbContext();
-            Product entity;
-            if (SelectedProduct.ProductId == 0)
-            {
-                entity = new Product();
-                db.Products.Add(entity);
-            }
-            else
-            {
-                entity = db.Products.First(x => x.ProductId == SelectedProduct.ProductId);
-            }
-
-            entity.Sku = SelectedProduct.Sku;
-            entity.ProductName = SelectedProduct.ProductName;
-            entity.CategoryId = SelectedProduct.CategoryId;
-            entity.UnitId = SelectedProduct.UnitId;
-            entity.MinStockLevel = SelectedProduct.MinStockLevel;
-            entity.Description = SelectedProduct.Description;
-            entity.IsActive = SelectedProduct.IsActive;
-
-            db.SaveChanges();
-            LoadAll();
-            MessageBox.Show("Товар сохранен.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            var saved = await _inventoryService.SaveProductAsync(SelectedProduct);
+            await _dialogService.ShowInfoAsync("Товар сохранен.", "Успех");
+            await LoadAllAsync();
+            SelectedProduct = Products.FirstOrDefault(x => x.ProductId == saved.ProductId);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка сохранения товара: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка сохранения товара: {ex.Message}");
         }
     }
 
@@ -300,7 +292,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (Categories.Count == 0 || Units.Count == 0)
         {
-            MessageBox.Show("Сначала добавьте хотя бы одну категорию и единицу измерения.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _ = _dialogService.ShowErrorAsync("Сначала добавьте хотя бы одну категорию и единицу измерения.", "Внимание");
             return;
         }
 
@@ -315,31 +307,35 @@ public sealed class MainViewModel : ObservableObject
         };
     }
 
-    private void DeleteProduct()
+    private async Task DeactivateProductAsync()
     {
         if (SelectedProduct is null || SelectedProduct.ProductId == 0)
         {
             return;
         }
 
+        var confirmed = await _dialogService.ConfirmAsync($"Деактивировать товар \"{SelectedProduct.ProductName}\"?", "Подтверждение");
+        if (!confirmed)
+        {
+            return;
+        }
+
         try
         {
-            using var db = new TodbContext();
-            var entity = db.Products.First(x => x.ProductId == SelectedProduct.ProductId);
-            db.Products.Remove(entity);
-            db.SaveChanges();
-            SelectedProduct = null;
-            LoadAll();
+            SelectedProduct.IsActive = false;
+            await _inventoryService.SaveProductAsync(SelectedProduct);
+            await _dialogService.ShowInfoAsync("Товар деактивирован.", "Успех");
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Не удалось удалить товар: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Не удалось деактивировать товар: {ex.Message}");
         }
     }
 
-    private void AddSupplier()
+    private async Task AddSupplierAsync()
     {
-        var name = Prompt("Новый поставщик", "Введите название поставщика:");
+        var name = await _dialogService.PromptAsync("Введите название поставщика:", "Новый поставщик");
         if (string.IsNullOrWhiteSpace(name))
         {
             return;
@@ -347,20 +343,18 @@ public sealed class MainViewModel : ObservableObject
 
         try
         {
-            using var db = new TodbContext();
-            db.Suppliers.Add(new Supplier { SupplierName = name.Trim() });
-            db.SaveChanges();
-            LoadAll();
+            await _inventoryService.AddSupplierAsync(name);
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка добавления поставщика: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка добавления поставщика: {ex.Message}");
         }
     }
 
-    private void AddCategory()
+    private async Task AddCategoryAsync()
     {
-        var name = Prompt("Новая категория", "Введите название категории:");
+        var name = await _dialogService.PromptAsync("Введите название категории:", "Новая категория");
         if (string.IsNullOrWhiteSpace(name))
         {
             return;
@@ -368,21 +362,19 @@ public sealed class MainViewModel : ObservableObject
 
         try
         {
-            using var db = new TodbContext();
-            db.Categories.Add(new Category { CategoryName = name.Trim() });
-            db.SaveChanges();
-            LoadAll();
+            await _inventoryService.AddCategoryAsync(name);
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка добавления категории: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка добавления категории: {ex.Message}");
         }
     }
 
-    private void AddUnit()
+    private async Task AddUnitAsync()
     {
-        var name = Prompt("Новая единица", "Введите название единицы:");
-        var shortName = Prompt("Новая единица", "Введите краткое обозначение:");
+        var name = await _dialogService.PromptAsync("Введите название единицы:", "Новая единица");
+        var shortName = await _dialogService.PromptAsync("Введите краткое обозначение:", "Новая единица");
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(shortName))
         {
             return;
@@ -390,112 +382,58 @@ public sealed class MainViewModel : ObservableObject
 
         try
         {
-            using var db = new TodbContext();
-            db.Units.Add(new Unit { UnitName = name.Trim(), UnitShortName = shortName.Trim() });
-            db.SaveChanges();
-            LoadAll();
+            await _inventoryService.AddUnitAsync(name, shortName);
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка добавления единицы измерения: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка добавления единицы измерения: {ex.Message}");
         }
     }
 
-    private void CreateReceipt()
+    private async Task CreateReceiptAsync()
     {
-        if (SelectedReceiptProduct is null || SelectedReceiptSupplier is null)
+        if (SelectedReceiptProduct is null || SelectedReceiptSupplier is null || ReceiptQuantity <= 0 || ReceiptPrice <= 0)
         {
+            await _dialogService.ShowErrorAsync("Проверьте товар, поставщика, количество и цену.", "Проверка данных");
             return;
         }
 
         try
         {
-            using var db = new TodbContext();
-            var receipt = new Receipt
-            {
-                SupplierId = SelectedReceiptSupplier.SupplierId,
-                ReceiptDate = DateTime.Now,
-                TotalAmount = ReceiptQuantity * ReceiptPrice,
-                ReceiptItems =
-                {
-                    new ReceiptItem
-                    {
-                        ProductId = SelectedReceiptProduct.ProductId,
-                        Quantity = ReceiptQuantity,
-                        Price = ReceiptPrice
-                    }
-                }
-            };
+            await _inventoryService.CreateReceiptAsync(
+                SelectedReceiptSupplier.SupplierId,
+                new[] { new DocumentLineRequest { ProductId = SelectedReceiptProduct.ProductId, Quantity = ReceiptQuantity, Price = ReceiptPrice } });
 
-            db.Receipts.Add(receipt);
-            db.SaveChanges();
-
-            MessageBox.Show("Поступление сохранено.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-            LoadAll();
+            await _dialogService.ShowInfoAsync("Поступление сохранено.", "Успех");
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка создания поступления: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка создания поступления: {ex.Message}");
         }
     }
 
-    private void CreateSale()
+    private async Task CreateSaleAsync()
     {
-        if (SelectedSaleProduct is null)
+        if (SelectedSaleProduct is null || SaleQuantity <= 0 || SalePrice <= 0)
         {
+            await _dialogService.ShowErrorAsync("Проверьте товар, количество и цену.", "Проверка данных");
             return;
         }
 
         try
         {
-            using var db = new TodbContext();
-            var stock = db.StockBalances.AsNoTracking().FirstOrDefault(x => x.ProductId == SelectedSaleProduct.ProductId)?.CurrentStock ?? 0;
-            if (stock < SaleQuantity)
-            {
-                MessageBox.Show($"Недостаточно остатка. Доступно: {stock}", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            await _inventoryService.CreateSaleAsync(
+                new[] { new DocumentLineRequest { ProductId = SelectedSaleProduct.ProductId, Quantity = SaleQuantity, Price = SalePrice } });
 
-            var sale = new Sale
-            {
-                SaleDate = DateTime.Now,
-                TotalAmount = SaleQuantity * SalePrice,
-                SaleItems =
-                {
-                    new SaleItem
-                    {
-                        ProductId = SelectedSaleProduct.ProductId,
-                        Quantity = SaleQuantity,
-                        Price = SalePrice
-                    }
-                }
-            };
-
-            db.Sales.Add(sale);
-            db.SaveChanges();
-
-            MessageBox.Show("Продажа сохранена.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-            LoadAll();
+            await _dialogService.ShowInfoAsync("Продажа сохранена.", "Успех");
+            await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка создания продажи: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _dialogService.ShowErrorAsync($"Ошибка создания продажи: {ex.Message}");
         }
-    }
-
-    private static Product CloneProduct(Product source)
-    {
-        return new Product
-        {
-            ProductId = source.ProductId,
-            Sku = source.Sku,
-            ProductName = source.ProductName,
-            CategoryId = source.CategoryId,
-            UnitId = source.UnitId,
-            MinStockLevel = source.MinStockLevel,
-            Description = source.Description,
-            IsActive = source.IsActive
-        };
     }
 
     private void RaiseCommandStates()
@@ -505,15 +443,15 @@ public sealed class MainViewModel : ObservableObject
 
     private static void RaiseCanExecute(params ICommand[] commands)
     {
-        foreach (var command in commands.OfType<RelayCommand>())
+        foreach (var relay in commands.OfType<RelayCommand>())
         {
-            command.RaiseCanExecuteChanged();
+            relay.RaiseCanExecuteChanged();
         }
-    }
 
-    private static string? Prompt(string title, string message)
-    {
-        return Microsoft.VisualBasic.Interaction.InputBox(message, title);
+        foreach (var asyncRelay in commands.OfType<AsyncRelayCommand>())
+        {
+            asyncRelay.RaiseCanExecuteChanged();
+        }
     }
 }
 
