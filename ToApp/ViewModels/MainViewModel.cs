@@ -31,7 +31,6 @@ public sealed class MainViewModel : ObservableObject
         Units = new ObservableCollection<Unit>();
         StockBalances = new ObservableCollection<StockBalance>();
 
-        LoadCommand = new RelayCommand(_ => LoadAll());
         SaveProductCommand = new RelayCommand(_ => SaveProduct(), _ => SelectedProduct is not null);
         NewProductCommand = new RelayCommand(_ => CreateNewProduct());
         DeleteProductCommand = new RelayCommand(_ => DeleteProduct(), _ => SelectedProduct is not null && SelectedProduct.ProductId > 0);
@@ -184,7 +183,6 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    public ICommand LoadCommand { get; }
     public ICommand SaveProductCommand { get; }
     public ICommand NewProductCommand { get; }
     public ICommand DeleteProductCommand { get; }
